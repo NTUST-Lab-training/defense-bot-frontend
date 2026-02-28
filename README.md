@@ -41,7 +41,7 @@ chmod +x run.sh
 
 ```env
 # 後端 API 的基礎網址 (請填入整合測試機或正式機的後端 IP 與 Port)
-VITE_API_BASE_URL=http://192.168.109.128:8088
+VITE_API_BASE_URL=http://localhost:8088
 ```
 
 ---
