@@ -4,7 +4,7 @@
 
 ---
 
-## 🛠 技術棧 (Tech Stack)
+##  技術棧 (Tech Stack)
 
 * **核心框架**: React 19 + Vite
 * **路由管理**: React Router DOM v7
@@ -32,29 +32,29 @@ chmod +x run.sh
 ```
 
 ** `run.sh` 腳本在背後做了什麼？**
-1. **環境變數初始化**：自動檢查目錄下是否有 `.env` 檔案。如果沒有，會自動複製一份 `.env.example` 生成預設的 `.env`。
-2. **容器建構與啟動**：呼叫 `docker-compose up -d --build`，將 React 專案編譯為靜態檔案，並放入輕量級的 Nginx 容器中運行。
-3. **完成啟動**：前端服務將預設運行於機器的 `Port 80`。
+1. 自動檢查是否有 `.env` 檔案，若無則複製 `.env.example` 生成預設設定。
+2. 呼叫 `docker-compose up -d --build`，將 React 編譯為靜態檔案，並放入輕量級 Nginx 容器中運行。
+3. 服務啟動後，預設運行於機器的 `Port 80`。
 
 ### 3. 環境變數設定 (Environment Variables)
-若後端 API 的 IP 或網域有變動，請直接修改專案根目錄下的 `.env` 檔案（若無此檔案請執行 `./run.sh` 自動生成），修改完成後再次執行 `./run.sh` 即可套用新設定：
+若後端 API 的 IP 或網域有變動，請修改專案根目錄下的 `.env` 檔案，修改後再次執行 `./run.sh` 即可套用新設定：
 
 ```env
 # 後端 API 的基礎網址 (請填入整合測試機或正式機的後端 IP 與 Port)
-VITE_API_BASE_URL=[http://localhost:8088](http://localhost:8088)
+VITE_API_BASE_URL=http://192.168.109.128:8088
 ```
 
 ---
 
 ##  目錄結構說明 (Folder Structure)
 
-本專案採用標準 Vite React 目錄結構，並結合 Docker 部署配置：
+本專案採用標準 Vite React 目錄結構，已移除不必要的預設檔案，並結合 Docker 部署配置：
 
 ```text
 defense-bot-frontend/
-├── public/               # 靜態資源 (如 favicon)
+├── public/               # 靜態資源 (如 favicon.ico)
 ├── src/
-│   ├── assets/           # 圖片、SVG 等資源
+│   ├── assets/           # 圖片、SVG 等內部資源
 │   ├── pages/            # 系統核心頁面
 │   │   ├── Login.jsx     # 登入與身分綁定頁面 (存取 localStorage)
 │   │   ├── Dashboard.jsx # 個人儀表板 (顯示個人資訊與歷史產出)
@@ -62,31 +62,42 @@ defense-bot-frontend/
 │   ├── App.jsx           # 前端路由設定 (Routes)
 │   ├── main.jsx          # React 應用程式進入點
 │   └── index.css         # Tailwind 基礎樣式與全域 CSS
-├── .env.example          #  環境變數範本檔 (請勿將真實 .env 推上 Git)
-├── docker-compose.yml    #  Docker 服務配置檔
-├── Dockerfile            #  Nginx 多階段構建腳本
-├── run.sh                #  一鍵啟動腳本
-├── eslint.config.js      # ESLint 程式碼檢查規則
+├── .env.example          # 環境變數範本檔 (請勿將真實 .env 推上 Git)
+├── docker-compose.yml    # Docker 服務配置檔
+├── Dockerfile            # Nginx 多階段構建腳本
+├── run.sh                # 一鍵啟動腳本
 ├── tailwind.config.js    # Tailwind CSS 樣式配置檔
 └── package.json          # 專案依賴套件清單
 ```
 
 ---
 
-## 🔌 API 串接與資料流規範 (Data Flow & Integration)
+##  API 規格與開發指南 (API Documentation)
 
-本系統前端採取**「輕量化狀態、零信任驗證」**的設計模式，核心業務邏輯皆由後端與 Dify Agent 處理。
+本系統採取**「輕量化狀態、零信任驗證」**的設計模式。前端只需負責介面渲染，核心業務邏輯與 AI 驗證皆由後端 FastAPI 處理。
 
-### 1. 模擬登入與狀態保存 (`Login.jsx` & `Dashboard.jsx`)
-* **狀態儲存**：登入後，前端會將 `studentId` 等資訊存入瀏覽器的 `localStorage` 中。
-* **驗證機制**：後續所有與後端溝通的 API 請求，都**必須**在 Headers 中攜帶 `x-student-id`，供後端進行身分識別。
+### 1. API 文件參考 (Swagger UI)
+所有 API 端點的詳細規格、請求格式 (Payload) 與回傳格式，請直接參考後端自動生成的互動式 API 文件：
+ **http://[後端IP]:8088/docs**
 
-### 2. AI 核心對話機制 (`ChatRoom.jsx`)
-負責與後端 FastAPI 對話代理端點進行溝通，維持上下文記憶。
-* **請求端點**: `POST /api/v1/chat`
-* **對話狀態維持**: 每次請求完成後，前端會將後端回傳的 `conversation_id` 更新至 React State，確保 Dify Agent 能記住多輪對話的上下文。
+### 2. 核心 API 列表
+前端主要串接以下三支核心 API：
+* `GET /api/v1/students/me`：取得登入學生的基本資料與指導教授。
+* `GET /api/v1/defense/history`：取得該學生過去生成的口試佈告歷史紀錄與下載連結。
+* `POST /api/v1/chat`：傳送對話訊息至 Dify AI Agent。需攜帶 `query` 與 `conversation_id` 參數。
 
-### 3. 特殊 UI 渲染邏輯 (檔案下載卡片)
-前端會攔截並監聽 AI 回傳的文字，若透過正則表達式偵測到特定格式的 Markdown 下載連結（例如 `[DOWNLOAD](http://.../xxx.pptx)`），前端會隱藏原本的 Markdown 語法，將該段落轉換為排版精美的互動卡片，提供最佳的用戶體驗。
+### 3. 全域身分驗證規範 (Authentication)
+* **狀態儲存**：使用者登入後，前端會將學號 (`studentId`) 等資訊存入瀏覽器的 `localStorage` 中。
+* **Header 攔截**：後續**所有**與後端溝通的 API 請求，都必須在 HTTP Headers 中攜帶 `x-student-id`，供後端進行身分識別與資料隔離。
+  ```javascript
+  headers: { 
+    'Content-Type': 'application/json',
+    'x-student-id': localStorage.getItem('studentId')
+  }
+  ```
+
+### 4. 特殊 UI 渲染邏輯 (檔案下載卡片)
+前端會攔截 `ChatRoom.jsx` 中 AI 回傳的文字串流。若透過正則表達式偵測到特定格式的 Markdown 下載連結（例如 `[DOWNLOAD](http://.../xxx.pptx)`），前端會隱藏原本的 Markdown 語法，將該段落轉換為排版精美的「📥 點我下載 PPT」互動卡片按鈕。
 
 ---
+
