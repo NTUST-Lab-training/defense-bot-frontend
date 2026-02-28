@@ -1,17 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+
+
 export default function ChatRoom() {
   const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef(null);
+  const [conversationId, setConversationId] = useState('');
 
-  // 1. 抓取身分與對照後的學術資訊 (從 Dashboard 存入的記憶)
+  // 1. 抓取身分與對照後的學術資訊 (從 Login 存入的記憶)
   const user = {
     name: localStorage.getItem('studentName') || '訪客',
-    id: localStorage.getItem('studentId') || 'unknown',
+    id: localStorage.getItem('studentId') || '',
     thesis: localStorage.getItem('thesisTitle') || '尚未提供',
     advisor: localStorage.getItem('advisor') || '尚未提供'
   };
@@ -23,12 +26,16 @@ export default function ChatRoom() {
 
   // 初始化開場白
   useEffect(() => {
-    if (!localStorage.getItem('studentId')) navigate('/');
+    if (!user.id) {
+      alert("尚未登入！請先驗證身分。");
+      navigate('/');
+      return;
+    }
     setMessages([{ 
       role: 'ai', 
-      content: `您好 ${user.name} 同學！我已讀取到您的論文題目為《${user.thesis}》。請告訴我口試的地點與時間，我將為您產生排版好的佈告。` 
+      content: `您好 ${user.name} 同學！我已讀取到您的論文題目。請告訴我您的「口試地點」與「口試時間」，以及「委員名單」，我將為您產生排版好的佈告。` 
     }]);
-  }, []);
+  }, [navigate, user.id, user.name]);
 
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
@@ -37,31 +44,46 @@ export default function ChatRoom() {
     setInput('');
     setLoading(true);
 
+    // 支援環境變數，若無則預設本地端
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8088';
+
     try {
-      const response = await fetch('http://localhost:8000/api/chat', {
+      const response = await fetch(`${API_BASE_URL}/api/v1/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-student-id': user.id //  極度重要：把學號放在 Header 交給後端驗證
+        },
         body: JSON.stringify({
           query: userQuery,
-          inputs: {
-            user_name: user.name,
-            thesis_title: user.thesis,
-            advisor_name: user.advisor,
-            current_date: new Date().toLocaleDateString('zh-TW') // 動態日期
-          },
-          user: user.id
+          conversation_id: conversationId //  用來維持對話狀態
+          //  注意：這裡被大幅精簡了！不需要傳姓名跟題目，後端會以零信任模式自行去資料庫核對。
         })
       });
-      const data = await response.json();
+
+      if (!response.ok) {
+         if (response.status === 401) throw new Error('身分驗證失敗，請重新登入');
+         throw new Error('伺服器回應錯誤');
+      }
       
-      // A2UI 邏輯：判斷回應是否包含下載指令
-      // 假設後端回傳格式包含 [FILE: 網址]
+      const data = await response.json();
       setMessages(prev => [...prev, { role: 'ai', content: data.answer }]);
+      if (data.conversation_id) {
+        setConversationId(data.conversation_id);
+      }
+      
     } catch (e) {
-      setMessages(prev => [...prev, { role: 'ai', content: '⚠️ 後端連線中斷，請確認 FastAPI 服務。' }]);
+      console.error(e);
+      setMessages(prev => [...prev, { role: 'ai', content: `⚠️ 系統提示：${e.message || '後端連線中斷，請確認 FastAPI 服務是否啟動。'}` }]);
     } finally {
       setLoading(false);
     }
+  };
+
+  // 輔助函式：用來從 Dify 回傳的文字中抓取 Markdown 網址
+  const extractUrl = (text) => {
+    const match = text.match(/\[DOWNLOAD\]\((https?:\/\/[^\s)]+)\)/) || text.match(/(https?:\/\/[^\s)]+\.pptx)/);
+    return match ? match[1] : null;
   };
 
   return (
@@ -73,28 +95,38 @@ export default function ChatRoom() {
 
       {/* 對話區域 */}
       <div className="flex-1 overflow-y-auto p-6 space-y-8 max-w-3xl mx-auto w-full">
-        {messages.map((m, i) => (
-          <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`group relative p-5 rounded-3xl max-w-[85%] shadow-sm leading-relaxed ${
-              m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-white border border-slate-100 text-slate-700'
-            }`}>
-              {/* 解析 A2UI 下載卡片 */}
-              {m.content.includes('[DOWNLOAD]') ? (
-                <div className="space-y-4 text-center">
-                  <p>✨ 佈告已排版完成！</p>
-                  <div className="p-4 bg-slate-50 rounded-2xl border-2 border-dashed border-blue-200">
-                    <p className="text-xs font-bold text-blue-400 mb-2">PowerPoint 格式已生成</p>
-                    <button className="bg-blue-600 text-white px-6 py-2 rounded-full font-bold shadow-lg shadow-blue-100">
-                      📥 點我下載 PPT
-                    </button>
+        {messages.map((m, i) => {
+          const isDownload = m.content.includes('[DOWNLOAD]');
+          const downloadUrl = isDownload ? extractUrl(m.content) : null;
+
+          return (
+            <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`group relative p-5 rounded-3xl max-w-[85%] shadow-sm leading-relaxed ${
+                m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-white border border-slate-100 text-slate-700'
+              }`}>
+                {/* 判斷並渲染 A2UI 下載卡片 */}
+                {isDownload ? (
+                  <div className="space-y-4 text-center">
+                    <p>✨ 佈告已為您排版完成！</p>
+                    <div className="p-4 bg-slate-50 rounded-2xl border-2 border-dashed border-blue-200">
+                      <p className="text-xs font-bold text-blue-400 mb-2">PowerPoint 格式已生成</p>
+                      <a 
+                        href={downloadUrl || '#'} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-block bg-blue-600 text-white px-6 py-2 rounded-full font-bold shadow-lg shadow-blue-100 hover:bg-blue-700 transition"
+                      >
+                        📥 點我下載 PPT
+                      </a>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                m.content
-              )}
+                ) : (
+                  m.content
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         {loading && <div className="text-slate-300 text-xs font-bold animate-pulse">管家正在排版中，請稍候...</div>}
         <div ref={scrollRef} />
       </div>
