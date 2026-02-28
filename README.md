@@ -31,7 +31,7 @@ chmod +x run.sh
 ./run.sh
 ```
 
-*** `run.sh` 腳本在背後做了什麼？**
+**💡 `run.sh` 腳本在背後做了什麼？**
 1. 自動檢查是否有 `.env` 檔案，若無則複製 `.env.example` 生成預設設定。
 2. 呼叫 `docker-compose up -d --build`，將 React 編譯為靜態檔案，並放入輕量級 Nginx 容器中運行。
 3. 服務啟動後，預設運行於機器的 `Port 80`。
