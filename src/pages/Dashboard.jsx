@@ -23,6 +23,8 @@ export default function Dashboard() {
           thesis: data.thesis_title_zh,
           advisor: data.advisor
         });
+        // 存入 localStorage 供 ChatRoom 使用
+        localStorage.setItem('student_name', data.student_name);
       });
 
     // 2. 取得歷史紀錄
