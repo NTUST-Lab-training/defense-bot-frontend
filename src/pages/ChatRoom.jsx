@@ -11,12 +11,11 @@ export default function ChatRoom() {
   const scrollRef = useRef(null);
   const [conversationId, setConversationId] = useState('');
 
-  // 1. 抓取身分與對照後的學術資訊 (從 Login 存入的記憶)
+  // 1. 抓取身分憑證 (從 Login 存入的學號)
   const user = {
-    name: localStorage.getItem('studentName') || '訪客',
     id: localStorage.getItem('studentId') || '',
-    thesis: localStorage.getItem('thesisTitle') || '尚未提供',
-    advisor: localStorage.getItem('advisor') || '尚未提供'
+    name: localStorage.getItem('student_name') || ''
+    
   };
 
   // 自動捲動到底部
@@ -45,7 +44,7 @@ export default function ChatRoom() {
     setLoading(true);
 
     // 支援環境變數，若無則預設本地端
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8088';
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/chat`, {

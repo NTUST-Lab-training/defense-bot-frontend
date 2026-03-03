@@ -12,9 +12,10 @@ export default function Dashboard() {
 
     // 依照 API.md 規範，使用 x-student-id Header
     const headers = { 'x-student-id': studentId };
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
     // 1. 取得個人檔案
-    fetch('http://localhost:8088/api/v1/students/me', { headers })
+    fetch(`${API_BASE_URL}/api/v1/students/me`, { headers })
       .then(res => res.json())
       .then(data => {
         setUser({
@@ -23,10 +24,12 @@ export default function Dashboard() {
           thesis: data.thesis_title_zh,
           advisor: data.advisor
         });
+        // 存入 localStorage 供 ChatRoom 使用
+        localStorage.setItem('student_name', data.student_name);
       });
 
     // 2. 取得歷史紀錄
-    fetch('http://localhost:8088/api/v1/defense/history', { headers })
+    fetch(`${API_BASE_URL}/api/v1/defense/history`, { headers })
       .then(res => res.json())
       .then(data => setHistory(data));
   }, [navigate]);
