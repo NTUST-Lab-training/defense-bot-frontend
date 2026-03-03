@@ -14,6 +14,19 @@ if ! command -v docker &> /dev/null; then
   echo "❌ 未偵測到 Docker，請先安裝 Docker"
   exit 1
 fi
+# 複製 .env.example 為 .env（如果尚未存在）
+if [ ! -f .env ]; then
+    echo "📝 偵測到尚未建立 .env，正在從範例檔複製..."
+    cp .env.example .env
+    echo "⚠️  請先編輯 .env，將 BACKEND_URL 改為後端宿主機的真實 IP，再重新執行此腳本"
+    exit 1
+fi
+
+# 檢查 BACKEND_URL 是否仍為預設佔位值
+if grep -q "192.168.x.x" .env; then
+    echo "❌ 請先編輯 .env，將 BACKEND_URL 改為後端宿主機的真實 IP"
+    exit 1
+fi
 
 # 停止並移除舊容器（若存在）
 if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
@@ -27,6 +40,7 @@ docker build -t "$IMAGE_NAME" .
 echo "🚀 啟動容器（Port ${PORT}）..."
 docker run -d \
   --name "$CONTAINER_NAME" \
+  --env-file .env \
   -p "${PORT}:80" \
   --restart unless-stopped \
   "$IMAGE_NAME"

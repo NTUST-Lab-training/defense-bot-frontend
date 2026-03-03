@@ -15,12 +15,15 @@ RUN npm run build
 # ---- Stage 2: Serve ----
 FROM nginx:alpine
 
-# 複製自訂 nginx 設定
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# 複製 nginx 設定模板（啟動時由 envsubst 替換 ${BACKEND_URL}）
+COPY nginx.conf /etc/nginx/templates/default.conf.template
 
 # 複製構建產物
 COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 80
 
+# nginx:alpine 官方映像內建 /docker-entrypoint.d/ 機制：
+# 會自動對 /etc/nginx/templates/*.template 執行 envsubst，
+# 輸出至 /etc/nginx/conf.d/，再啟動 nginx。
 CMD ["nginx", "-g", "daemon off;"]
