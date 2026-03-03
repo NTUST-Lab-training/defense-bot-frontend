@@ -5,7 +5,7 @@ set -e
 
 IMAGE_NAME="defense-bot-frontend"
 CONTAINER_NAME="defense-bot-frontend"
-PORT=80
+PORT=88
 
 cd "$(dirname "$0")"
 
@@ -41,7 +41,7 @@ echo "🚀 啟動容器（Port ${PORT}）..."
 docker run -d \
   --name "$CONTAINER_NAME" \
   --env-file .env \
-  -p "${PORT}:80" \
+  -p "${PORT}:88" \
   --restart unless-stopped \
   "$IMAGE_NAME"
 
