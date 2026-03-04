@@ -9,7 +9,7 @@
 * **核心框架**: React 19 + Vite
 * **路由管理**: React Router DOM v7
 * **樣式排版**: Tailwind CSS (PostCSS)
-* **容器化部署**: Docker + Docker Compose + Nginx
+* **容器化部署**: Docker + Nginx
 
 ---
 
@@ -33,15 +33,16 @@ chmod +x run.sh
 
 **💡 `run.sh` 腳本在背後做了什麼？**
 1. 自動檢查是否有 `.env` 檔案，若無則複製 `.env.example` 生成預設設定。
-2. 呼叫 `docker-compose up -d --build`，將 React 編譯為靜態檔案，並放入輕量級 Nginx 容器中運行。
-3. 服務啟動後，預設運行於機器的 `Port 80`。
+2. 使用 `docker build` 進行多階段構建（Node 編譯 → Nginx 部署），再以 `docker run` 啟動容器。
+3. 服務啟動後，預設運行於機器的 `Port 88`。
 
 ### 3. 環境變數設定 (Environment Variables)
 若後端 API 的 IP 或網域有變動，請修改專案根目錄下的 `.env` 檔案，修改後再次執行 `./run.sh` 即可套用新設定：
 
 ```env
-# 後端 API 的基礎網址 (請填入整合測試機或正式機的後端 IP 與 Port)
-VITE_API_BASE_URL=http://localhost:8088
+# 後端 API 的基礎網址 (請填入後端宿主機的真實 IP 與 Port，不可使用 127.0.0.1)
+# Nginx 反向代理 /api/ 和 /downloads/ 時，會將請求轉送到此 URL
+BACKEND_URL=http://192.168.x.x:8088
 ```
 
 ---
@@ -63,9 +64,10 @@ defense-bot-frontend/
 │   ├── main.jsx          # React 應用程式進入點
 │   └── index.css         # Tailwind 基礎樣式與全域 CSS
 ├── .env.example          # 環境變數範本檔 (請勿將真實 .env 推上 Git)
-├── docker-compose.yml    # Docker 服務配置檔
+├── .dockerignore         # Docker 構建忽略清單
 ├── Dockerfile            # Nginx 多階段構建腳本
-├── run.sh                # 一鍵啟動腳本
+├── nginx.conf            # Nginx 設定模板 (含反向代理與 SPA 路由)
+├── run.sh                # 一鍵 Docker 啟動腳本
 ├── tailwind.config.js    # Tailwind CSS 樣式配置檔
 └── package.json          # 專案依賴套件清單
 ```
