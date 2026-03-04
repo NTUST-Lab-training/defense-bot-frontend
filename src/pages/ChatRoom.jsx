@@ -80,8 +80,9 @@ export default function ChatRoom() {
   };
 
   // 輔助函式：用來從 Dify 回傳的文字中抓取 Markdown 網址
+  // 支援相對路徑（/downloads/...）與絕對路徑（https://...），確保透過 nginx 反向代理存取
   const extractUrl = (text) => {
-    const match = text.match(/\[DOWNLOAD\]\((https?:\/\/[^\s)]+)\)/) || text.match(/(https?:\/\/[^\s)]+\.pptx)/);
+    const match = text.match(/\[DOWNLOAD\]\(([^)]+\.pptx)\)/) || text.match(/((?:https?:\/\/|\/)[^\s)]+\.pptx)/);
     return match ? match[1] : null;
   };
 

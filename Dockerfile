@@ -15,13 +15,24 @@ RUN npm run build
 # ---- Stage 2: Serve ----
 FROM nginx:alpine
 
+# 安裝 openssl 並產生自簽憑證（測試環境使用）
+# 正式環境（GCP）請改用 Let's Encrypt 或 GCP Managed Certificate
+RUN apk add --no-cache openssl && \
+    mkdir -p /etc/nginx/ssl && \
+    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+      -keyout /etc/nginx/ssl/key.pem \
+      -out  /etc/nginx/ssl/cert.pem \
+      -subj "/CN=defense-bot/O=Defense-Bot/C=TW"
+
 # 複製 nginx 設定模板（啟動時由 envsubst 替換 ${BACKEND_URL}）
 COPY nginx.conf /etc/nginx/templates/default.conf.template
 
 # 複製構建產物
 COPY --from=build /app/dist /usr/share/nginx/html
 
-EXPOSE 88
+# 80：HTTP（僅用於重導向至 HTTPS）
+# 443：HTTPS 主服務
+EXPOSE 80 443
 
 # nginx:alpine 官方映像內建 /docker-entrypoint.d/ 機制：
 # 會自動對 /etc/nginx/templates/*.template 執行 envsubst，

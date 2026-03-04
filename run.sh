@@ -5,7 +5,8 @@ set -e
 
 IMAGE_NAME="defense-bot-frontend"
 CONTAINER_NAME="defense-bot-frontend"
-PORT=88
+# 使用標準埠：80（HTTP 重導向）+ 443（HTTPS）
+
 
 cd "$(dirname "$0")"
 
@@ -37,15 +38,19 @@ fi
 echo "🔨 建置 Docker 映像檔..."
 docker build -t "$IMAGE_NAME" .
 
-echo "🚀 啟動容器（Port ${PORT}）..."
+echo "🚀 啟動容器（HTTP 80 → HTTPS 443）..."
 docker run -d \
   --name "$CONTAINER_NAME" \
   --env-file .env \
-  -p "${PORT}:88" \
+  -p "80:80" \
+  -p "443:443" \
   --restart unless-stopped \
   "$IMAGE_NAME"
 
 echo ""
-echo "✅ 部署完成！前端已在 http://localhost:${PORT} 上運行"
+echo "✅ 部署完成！"
+echo "   HTTPS 前端：https://localhost"
+echo "   HTTP 會自動重導向至 HTTPS"
+echo "   ⚠️  測試環境使用自簽憑證，瀏覽器會顯示安全警告，點選「繼續」即可"
 echo "   查看日誌：docker logs -f ${CONTAINER_NAME}"
 echo "   停止服務：docker rm -f ${CONTAINER_NAME}"
