@@ -23,7 +23,7 @@ export default function Login() {
         <p className="text-slate-400 text-center mb-8">智慧口試佈告系統</p>
         <form onSubmit={handleLogin} className="space-y-4">
           <input
-            type="text" placeholder="學號 (例如: M11402165)"
+            type="text" placeholder="學號 (例如: M1140XXXX)"
             className="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-blue-500"
             value={studentId} onChange={e => setStudentId(e.target.value)}
           />
