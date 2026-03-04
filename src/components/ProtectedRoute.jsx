@@ -7,25 +7,18 @@ import { Navigate, useNavigate } from 'react-router-dom';
  * 2. 首次渲染時向後端驗證該 studentId 是否合法，
  *    若後端回應不合法則清除 localStorage 並導回登入頁。
  */
-// ⚠️ 偵錯版本戳記
-const BUILD_VERSION = 'v2-debug-0305';
-
 export default function ProtectedRoute({ children }) {
   const navigate = useNavigate();
   const studentId = localStorage.getItem('studentId');
   const [verified, setVerified] = useState(false);
   const [checking, setChecking] = useState(true);
 
-  console.log(`%c[ProtectedRoute] BUILD=${BUILD_VERSION} | studentId=${studentId} | checking=${checking} | verified=${verified}`, 'color: cyan; font-weight: bold;');
-
   useEffect(() => {
     // 沒有 studentId → 不需要驗證，直接標記完成（由下方 render 導回登入頁）
     if (!studentId) {
-      console.warn('[ProtectedRoute] 無 studentId，導回登入頁');
       setChecking(false);
       return;
     }
-    console.log('[ProtectedRoute] 開始向後端驗證 studentId =', studentId);
 
     const controller = new AbortController();
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
@@ -35,45 +28,33 @@ export default function ProtectedRoute({ children }) {
       cache: 'no-store',
     })
       .then(res => {
-        console.log('[ProtectedRoute] 驗證回應: status =', res.status);
         if (!res.ok) throw new Error('unauthorized');
         return res.json();
       })
       .then(data => {
-        console.log('[ProtectedRoute] 驗證資料:', data);
         if (data && data.student_id && data.student_name) {
-          console.log('[ProtectedRoute] ✅ 驗證通過');
           setVerified(true);
         } else {
           throw new Error('invalid');
         }
       })
       .catch((err) => {
-        if (err.name === 'AbortError') {
-          console.log('[ProtectedRoute] fetch 已被 abort');
-          return;
-        }
-        console.warn('[ProtectedRoute] ❌ 驗證失敗:', err.message, '→ 導回登入頁');
+        if (err.name === 'AbortError') return;
         localStorage.clear();
         navigate('/', { replace: true });
       })
-      .finally(() => {
-        console.log('[ProtectedRoute] 驗證流程結束，setChecking(false)');
-        setChecking(false);
-      });
+      .finally(() => setChecking(false));
 
     return () => controller.abort();
   }, [studentId, navigate]);
 
   // 沒有 studentId → 直接導回登入頁
   if (!studentId) {
-    console.log('[ProtectedRoute] render: 無 studentId → <Navigate to="/">');
     return <Navigate to="/" replace />;
   }
 
   // 正在向後端驗證中，顯示載入畫面避免閃爍
   if (checking) {
-    console.log('[ProtectedRoute] render: 驗證中，顯示載入畫面');
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50">
         <p className="text-slate-400">驗證身分中...</p>
@@ -83,10 +64,8 @@ export default function ProtectedRoute({ children }) {
 
   // 驗證失敗（此時已被 navigate('/') 導走，此為防禦性程式碼）
   if (!verified) {
-    console.warn('[ProtectedRoute] render: 驗證未通過 → <Navigate to="/">');
     return <Navigate to="/" replace />;
   }
 
-  console.log('[ProtectedRoute] render: ✅ 驗證通過，渲染子元件');
   return children;
 }

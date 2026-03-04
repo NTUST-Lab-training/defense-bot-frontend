@@ -1,24 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-// ⚠️ 偵錯版本戳記
-const BUILD_VERSION = 'v2-debug-0305';
-
 export default function Dashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [history, setHistory] = useState([]);
-  const [debugInfo, setDebugInfo] = useState('Dashboard 載入中...');
 
   useEffect(() => {
     const studentId = localStorage.getItem('studentId');
-    console.log(`%c[Dashboard] BUILD=${BUILD_VERSION} | useEffect 啟動 | studentId=${studentId}`, 'color: yellow; font-size: 14px; font-weight: bold;');
-    setDebugInfo(`版本=${BUILD_VERSION} | studentId=${studentId}`);
-    if (!studentId) {
-      console.warn('[Dashboard] 無 studentId，導回登入頁');
-      setDebugInfo('❌ 無 studentId → 導回登入頁');
-      return navigate('/');
-    }
+    if (!studentId) return navigate('/');
 
     const controller = new AbortController();
     // 依照 API.md 規範，使用 x-student-id Header
@@ -26,19 +16,13 @@ export default function Dashboard() {
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
     // 1. 取得個人檔案（同時驗證學號是否合法）
-    console.log('[Dashboard] 向後端驗證 studentId =', studentId);
     fetch(`${API_BASE_URL}/api/v1/students/me`, { headers, signal: controller.signal, cache: 'no-store' })
       .then(res => {
-        console.log('[Dashboard] me 回應: status =', res.status);
-        setDebugInfo(prev => prev + ` | me=${res.status}`);
-        if (!res.ok) throw new Error(`unauthorized (${res.status})`);
+        if (!res.ok) throw new Error('unauthorized');
         return res.json();
       })
       .then(data => {
-        console.log('[Dashboard] 驗證資料:', data);
         if (!data || !data.student_id) throw new Error('invalid');
-        console.log('[Dashboard] ✅ 驗證通過，渲染使用者資料');
-        setDebugInfo(prev => prev + ' | ✅ 驗證通過');
         setUser({
           name: data.student_name,
           id: data.student_id,
@@ -48,16 +32,10 @@ export default function Dashboard() {
         localStorage.setItem('student_name', data.student_name);
       })
       .catch((err) => {
-        if (err.name === 'AbortError') {
-          console.log('[Dashboard] fetch 已被 abort');
-          return;
-        }
-        console.warn('[Dashboard] ❌ 驗證失敗:', err.message, '→ 導回登入頁');
-        setDebugInfo(prev => prev + ` | ❌ 失敗: ${err.message} → 導回登入頁`);
+        if (err.name === 'AbortError') return;
         // 學號無效或後端拒絕 → 清除登入狀態並導回登入頁
         localStorage.clear();
-        // 延遲 2 秒跳轉，讓偵錯訊息可以被看到
-        setTimeout(() => navigate('/'), 2000);
+        navigate('/');
       });
 
     // 2. 取得歷史紀錄
@@ -77,12 +55,8 @@ export default function Dashboard() {
   // 在後端驗證完成前，不顯示任何 Dashboard 內容
   if (!user) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 space-y-4">
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
         <p className="text-slate-400">載入中...</p>
-        <div className="bg-yellow-100 border border-yellow-400 text-yellow-800 text-xs p-3 rounded-lg max-w-md text-center font-mono">
-          <p className="font-bold">🔍 偵錯面板 ({BUILD_VERSION})</p>
-          <p>{debugInfo}</p>
-        </div>
       </div>
     );
   }
