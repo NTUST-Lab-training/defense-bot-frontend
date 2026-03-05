@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { authenticatedDownload } from '../utils/download';
 
 
 
@@ -110,14 +111,12 @@ export default function ChatRoom() {
                     <p>✨ 佈告已為您排版完成！</p>
                     <div className="p-4 bg-slate-50 rounded-2xl border-2 border-dashed border-blue-200">
                       <p className="text-xs font-bold text-blue-400 mb-2">PowerPoint 格式已生成</p>
-                      <a 
-                        href={downloadUrl || '#'} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="inline-block bg-blue-600 text-white px-6 py-2 rounded-full font-bold shadow-lg shadow-blue-100 hover:bg-blue-700 transition"
+                      <button 
+                        onClick={() => downloadUrl && authenticatedDownload(downloadUrl)}
+                        className="inline-block bg-blue-600 text-white px-6 py-2 rounded-full font-bold shadow-lg shadow-blue-100 hover:bg-blue-700 transition cursor-pointer"
                       >
                         📥 點我下載 PPT
-                      </a>
+                      </button>
                     </div>
                   </div>
                 ) : (
