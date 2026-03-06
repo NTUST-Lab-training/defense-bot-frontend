@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { authenticatedDownload } from '../utils/download';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -92,7 +93,7 @@ export default function Dashboard() {
                   <p className="font-bold text-sm">{item.defense_date}</p>
                   <p className="text-xs text-slate-400">{item.location}</p>
                 </div>
-                <a href={item.download_url} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold">下載 PPT</a>
+                <button onClick={() => authenticatedDownload(item.download_url)} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-bold cursor-pointer hover:bg-blue-100 transition">下載 PPT</button>
               </div>
             )) : <p className="text-slate-400">尚無產出紀錄</p>}
           </div>

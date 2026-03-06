@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { authenticatedDownload } from '../utils/download';
 
 
 
@@ -79,11 +82,41 @@ export default function ChatRoom() {
     }
   };
 
-  // 輔助函式：用來從 Dify 回傳的文字中抓取 Markdown 網址
-  // 支援相對路徑（/downloads/...）與絕對路徑（https://...），確保透過 nginx 反向代理存取
-  const extractUrl = (text) => {
-    const match = text.match(/\[DOWNLOAD\]\(([^)]+\.pptx)\)/) || text.match(/((?:https?:\/\/|\/)[^\s)]+\.pptx)/);
-    return match ? match[1] : null;
+  // Markdown 連結元件：若為下載連結則轉為認證下載按鈕
+  const markdownComponents = {
+    a({ href, children }) {
+      const isDownloadLink = href && (
+        href.includes('/api/v1/downloads/') || href.endsWith('.pptx')
+      );
+      if (isDownloadLink) {
+        const relativeUrl = href.replace(/^https?:\/\/[^/]+/, '');
+        const label = String(children) === 'DOWNLOAD' ? '📥 點此下載 PPT' : children;
+        return (
+          <button
+            onClick={() => authenticatedDownload(relativeUrl)}
+            className="inline-flex items-center gap-1.5 bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-blue-700 transition active:scale-95 cursor-pointer mx-0.5"
+          >
+            {label}
+          </button>
+        );
+      }
+      return <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">{children}</a>;
+    },
+    p({ children }) {
+      return <p className="mb-2 last:mb-0">{children}</p>;
+    },
+    ul({ children }) {
+      return <ul className="list-disc pl-5 mb-2 space-y-0.5">{children}</ul>;
+    },
+    ol({ children }) {
+      return <ol className="list-decimal pl-5 mb-2 space-y-0.5">{children}</ol>;
+    },
+    li({ children }) {
+      return <li className="leading-relaxed">{children}</li>;
+    },
+    strong({ children }) {
+      return <strong className="font-semibold">{children}</strong>;
+    },
   };
 
   return (
@@ -96,32 +129,20 @@ export default function ChatRoom() {
       {/* 對話區域 */}
       <div className="flex-1 overflow-y-auto p-6 space-y-8 max-w-3xl mx-auto w-full">
         {messages.map((m, i) => {
-          const isDownload = m.content.includes('[DOWNLOAD]');
-          const downloadUrl = isDownload ? extractUrl(m.content) : null;
-
           return (
             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`group relative p-5 rounded-3xl max-w-[85%] shadow-sm leading-relaxed ${
                 m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-white border border-slate-100 text-slate-700'
               }`}>
-                {/* 判斷並渲染 A2UI 下載卡片 */}
-                {isDownload ? (
-                  <div className="space-y-4 text-center">
-                    <p>✨ 佈告已為您排版完成！</p>
-                    <div className="p-4 bg-slate-50 rounded-2xl border-2 border-dashed border-blue-200">
-                      <p className="text-xs font-bold text-blue-400 mb-2">PowerPoint 格式已生成</p>
-                      <a 
-                        href={downloadUrl || '#'} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="inline-block bg-blue-600 text-white px-6 py-2 rounded-full font-bold shadow-lg shadow-blue-100 hover:bg-blue-700 transition"
-                      >
-                        📥 點我下載 PPT
-                      </a>
-                    </div>
-                  </div>
+                {m.role === 'user' ? (
+                  <span>{m.content}</span>
                 ) : (
-                  m.content
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={markdownComponents}
+                  >
+                    {m.content}
+                  </ReactMarkdown>
                 )}
               </div>
             </div>
